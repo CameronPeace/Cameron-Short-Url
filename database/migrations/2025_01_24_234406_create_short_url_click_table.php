@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('short_url_clicks', function (Blueprint $table) {
+        Schema::create('short_url_click', function (Blueprint $table) {
             $table->id();
             $table->foreignId('short_url_id')->index();
-            $table->dateTime('occurred_at');
+            $table->timestamp('occurred_at');
             $table->string('ip_address', length: 45)->nullable();
             $table->string('user_agent', length: 120)->nullable();
             $table->timestamps();
+            $table->foreign('short_url_id')->references('id')->on('short_url');
         });
     }
 
@@ -26,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('short_url_clicks');
+        Schema::dropIfExists('short_url_click');
     }
 };

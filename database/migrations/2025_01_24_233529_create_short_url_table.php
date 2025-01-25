@@ -13,12 +13,12 @@ return new class extends Migration
     {
         Schema::create('short_url', function (Blueprint $table) {
             $table->id();
-            $table->string('code', length: 10);
             $table->string('domain', length: 253)->nullable();
-            $table->text('redirect_url');
-            $table->softDeletes();
+            $table->string('code', length: 10);
+            $table->text('redirect');
             $table->timestamps();
-            $table->primary(['domain', 'code']);
+            $table->softDeletes();
+            $table->index('code');
         });
     }
 

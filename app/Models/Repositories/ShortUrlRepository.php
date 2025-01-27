@@ -43,7 +43,8 @@ class ShortUrlRepository
 
     public function getDetailsByCode(string $code, string $domain = null)
     {
-        return $this->model->select('short_url.code, short_url.redirect, short_url.created_at AS url_created, COUNT(short_url_click.id) AS total_clicks')
+        return $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
+            ->selectRaw('COUNT(short_url_click.id) AS total_clicks')
             ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
             ->where('code', $code)
             ->where('domain', $domain)
@@ -53,7 +54,8 @@ class ShortUrlRepository
 
     public function getDetails(int $limit = 100)
     {
-        return $this->model->select('short_url.code, short_url.redirect, short_url.created_at AS url_created, COUNT(short_url_click.id) AS total_clicks')
+        return $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
+            ->selectRaw('COUNT(short_url_click.id) AS total_clicks')
             ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
             ->groupBy('short_url.id')
             ->orderBy('total_clicks', 'desc')

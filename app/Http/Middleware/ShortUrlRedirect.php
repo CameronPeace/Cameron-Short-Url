@@ -19,7 +19,7 @@ class ShortUrlRedirect
     {
         \Log::info('Short Url redirect');
 
-        // we are using localhost/s/* here to act as a domain.
+        // we are using localhost/s/ to act as our domain.
         if ($request->is('s/*')) {
             $code = $request->segment(2);
             \Log::info($code);
@@ -27,7 +27,7 @@ class ShortUrlRedirect
             $shortUrl = $shortUrlRepository->get($code);
 
             \Log::info($shortUrl);
-            if (!empty($shortUrl) && !empty($shortUrl['redirect_url'])) {
+            if (!empty($shortUrl) && !empty($shortUrl['redirect'])) {
 
                 $clickData = [
                     'id' => $shortUrl['id'],
@@ -36,9 +36,8 @@ class ShortUrlRedirect
                     'user_agent' => $request->userAgent()
                 ];
 
-                dispatch(new SaveShortUrlClick($clickData));
-
-                return redirect($shortUrl['redirect_url']);
+                SaveShortUrlClick::dispatchSync($clickData);
+                return redirect($shortUrl['redirect']);
             }
         }
 

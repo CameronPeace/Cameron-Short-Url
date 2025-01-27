@@ -1,9 +1,11 @@
 <?php
+
 namespace App\Models\Repositories;
 
 use App\Models\ShortUrl;
 
-class ShortUrlRepository {
+class ShortUrlRepository
+{
 
     protected $model;
 
@@ -12,8 +14,50 @@ class ShortUrlRepository {
         $this->model = new ShortUrl;
     }
 
+    /**
+     * Get a specific short url by a specific code and domain.
+     *
+     * @param string $code
+     * @param string|null $domain
+     *
+     * @return array
+     */
     public function get(string $code, string $domain = null)
     {
-        return $this->model->where('domain', $domain)->where('code', $code)->first();   
+        return $this->model->where('domain', $domain)->where('code', $code)->first();
+    }
+
+    /**
+     * Create a new short_url record.
+     *
+     * @param string $code
+     * @param string $redirect
+     * @param string|null $domain
+     *
+     * @return array
+     */
+    public function create(string $code, string $redirect, string $domain = null)
+    {
+        return $this->model->create(['code' => $code, 'redirect' => $redirect, 'domain' => $domain]);
+    }
+
+    public function getDetailsByCode(string $code, string $domain = null)
+    {
+        return $this->model->select('short_url.code, short_url.redirect, short_url.created_at AS url_created, COUNT(short_url_click.id) AS total_clicks')
+            ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
+            ->where('code', $code)
+            ->where('domain', $domain)
+            ->groupBy('short_url.id')
+            ->get();
+    }
+
+    public function getDetails(int $limit = 100)
+    {
+        return $this->model->select('short_url.code, short_url.redirect, short_url.created_at AS url_created, COUNT(short_url_click.id) AS total_clicks')
+            ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
+            ->groupBy('short_url.id')
+            ->orderBy('total_clicks', 'desc')
+            ->limit($limit)
+            ->get();
     }
 }

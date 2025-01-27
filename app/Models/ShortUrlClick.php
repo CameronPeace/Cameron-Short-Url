@@ -16,7 +16,9 @@ class ShortUrlClick extends Model
      */
     protected $fillable = [
         'ip_address',
-        'user_agent'
+        'occurred_at',
+        'user_agent',
+        'short_url_id'
     ];
 
     /**

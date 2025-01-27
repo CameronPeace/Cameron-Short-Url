@@ -19,7 +19,7 @@ class ShortUrl extends Model
     protected $fillable = [
         'code',
         'domain',
-        'redirect_url'
+        'redirect'
     ];
 
     /**

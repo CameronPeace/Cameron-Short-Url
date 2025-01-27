@@ -4,12 +4,15 @@ namespace App\Http\Middleware;
 
 use App\Jobs\SaveShortUrlClick;
 use App\Models\Repositories\ShortUrlRepository;
+use App\Traits\ShortUrl;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class ShortUrlRedirect
 {
+    use ShortUrl;
+
     /**
      * Handle an incoming request.
      *
@@ -21,23 +24,37 @@ class ShortUrlRedirect
 
         // we are using localhost/s/ to act as our domain.
         if ($request->is('s/*')) {
+            $host = $request->getHost();
             $code = $request->segment(2);
-            \Log::info($code);
+
+            $cacheKey = $host . '_' . $code;
+            $cachedRedirect = \Cache::get($cacheKey);
+
+            if (!empty($cachedRedirect)) {
+                return redirect($cachedRedirect);
+            }
+
             $shortUrlRepository = new ShortUrlRepository();
             $shortUrl = $shortUrlRepository->get($code);
 
-            \Log::info($shortUrl);
             if (!empty($shortUrl) && !empty($shortUrl['redirect'])) {
 
-                $clickData = [
-                    'id' => $shortUrl['id'],
-                    'occurred_at' => date('Y-m-d H:i:s'),
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent()
-                ];
+                \Cache::put($cacheKey, $shortUrl['redirect'], 600);
 
-                SaveShortUrlClick::dispatchSync($clickData);
-                return redirect($shortUrl['redirect']);
+                $url = $this->sanitizeUrl($shortUrl['redirect']);
+
+                if (!empty($url)) {
+
+                    $clickData = [
+                        'id' => $shortUrl['id'],
+                        'occurred_at' => date('Y-m-d H:i:s'),
+                        'ip_address' => $request->ip(),
+                        'user_agent' => $request->userAgent()
+                    ];
+
+                    SaveShortUrlClick::dispatch($clickData);
+                    return redirect($this->sanitizeUrl($url));
+                }
             }
         }
 

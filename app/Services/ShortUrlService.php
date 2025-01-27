@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Exceptions\ShortUrlServiceException;
 use App\Models\Repositories\ShortUrlRepository;
+use App\Traits\ShortUrl;
 
 class ShortUrlService
 {
+    use ShortUrl;
 
     private $shortUrlRepository;
 
@@ -49,20 +51,5 @@ class ShortUrlService
         } catch (\Exception $e) {
             throw new ShortUrlServiceException($e->getMessage());
         }
-    }
-
-
-    public function generateRandomString($length = 10)
-    {
-
-        $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-        $charactersLength = strlen($characters);
-        $randomString = '';
-
-        for ($i = 0; $i < $length; $i++) {
-            $randomString .= $characters[rand(0, $charactersLength - 1)];
-        }
-
-        return $randomString;
     }
 }

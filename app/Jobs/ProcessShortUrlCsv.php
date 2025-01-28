@@ -3,22 +3,37 @@
 namespace App\Jobs;
 
 use App\Services\ShortUrlService;
+use App\Traits\HandlesCsv;
+use App\Traits\LoggableJob;
+use App\Traits\ShortUrl;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
 class ProcessShortUrlCsv implements ShouldQueue
 {
-    use Queueable;
+    use Queueable, ShortUrl, LoggableJob, HandlesCsv;
 
-    private $shortUrlService;
-
-    private $filePath;
+    public $tries = 1;
 
     const LONG_URL_COLUMN_HEADER = 'url';
+    const DOMAIN_COLUMN_HEADER = 'domain';
 
     const ACCEPTED_HEADERS = [
-        self::LONG_URL_COLUMN_HEADER
+        self::LONG_URL_COLUMN_HEADER,
+        self::DOMAIN_COLUMN_HEADER
     ];
+
+    /** 
+     * @var ShortUrlService
+     */
+    private $shortUrlService;
+
+    /**
+     * The csv filePath provided to the job.
+     *
+     * @var string
+     */
+    private $filePath;
 
     public function __construct(string $filePath)
     {
@@ -28,46 +43,37 @@ class ProcessShortUrlCsv implements ShouldQueue
 
     public function handle(): void
     {
-        if (!file_exists($this->filePath)) {
+
+        if (!$this->fileExists($this->filePath)) {
             \Log::error('File ' . $this->filePath . ' does not exist');
+            $this->log(get_class($this), 'FILE_REJECTED_404', ['file' => $this->filePath, 'message' => 'File does not exist.']);
             return;
         }
 
-        if (pathinfo($this->filePath, PATHINFO_EXTENSION) !== 'csv') {
+        if (!$this->isCsv($this->filePath)) {
             \Log::error('File is not a csv.');
+            $this->log(get_class($this), 'FILE_REJECTED_TYPE', ['file' => $this->filePath, 'message' => 'File is not a csv.']);
             return;
         }
 
-        // 50 MB
-        $maxFileSize = 50 * 1024 * 1024;
-
-        if (!file_exists($this->filePath)) {
-            \Log::error("File does not exist: " . $this->filePath);
+        if (!$this->isValidSize($this->filePath)) {
+            $message = sprintf('File %s exceeds the maximum allowed size of %s', $this->filePath, $this->getMaxFileSize());
+            \Log::error($message);
+            $this->log(get_class($this), 'FILE_REJECTED_SIZE', ['file' => $this->filePath, 'message' => $message]);
             return;
         }
 
-        $fileSize = filesize($this->filePath);
-
-        var_dump($fileSize);
-        if ($fileSize > $maxFileSize) {
-            \Log::error("File size exceeds the maximum allowed size of 500MB: " . $this->filePath);
-            return;
-        }
-
-        $file = fopen($this->filePath, "r");
-
-        $headers = fgetcsv($file);
-
-        $columnHeaders = $this->prepareHeaders($headers);
-
-        $headersMapping = $this->mapHeaders($columnHeaders);
+        $headersMapping = $this->prepareHeaderMappings($this->filePath);
 
         if (empty($headersMapping)) {
-            \Log::error('Columns invalid');
+            \Log::error('Invalid columns for short_url file ' . $this->filePath);
+            $this->log(get_class($this), 'FILE_REJECTED', ['file' => $this->filePath, 'message' => 'No processable columns.']);
             return;
         }
 
-        $this->processFile($headersMapping, $file);
+        $this->processFile($headersMapping, $this->filePath);
+
+        $this->log(get_class($this), 'UPLOAD_COMPLETE', ['file' => $this->filePath]);
     }
 
     /**
@@ -77,11 +83,28 @@ class ProcessShortUrlCsv implements ShouldQueue
      *
      * @return array
      */
-    private function prepareHeaders(array $headers)
+    public function prepareHeaders(array $headers)
     {
         return array_map(function ($header) {
             return trim(strtolower($header));
         }, $headers);
+    }
+
+    /**
+     * Create a mapping between the allowed and the file headers.
+     *
+     * @param string $file
+     *
+     * @return array
+     */
+    public function prepareHeaderMappings($filePath) 
+    {
+        $file = fopen($filePath, "r");
+        $headers = fgetcsv($file);
+        fclose($file);
+
+        $columnHeaders = $this->prepareHeaders($headers);
+        return $this->mapHeaders($columnHeaders);
     }
 
     /**
@@ -91,11 +114,11 @@ class ProcessShortUrlCsv implements ShouldQueue
      *
      * @return array
      */
-    private function mapHeaders(array $headers)
+    public function mapHeaders(array $headers)
     {
         $mapped = [];
 
-        for ($i = 0; $i <= COUNT($headers); $i++) {
+        for ($i = 0; $i < COUNT($headers); $i++) {
             if (in_array($headers[$i], self::ACCEPTED_HEADERS)) {
                 $mapped[$headers[$i]] = $i;
             }
@@ -108,13 +131,16 @@ class ProcessShortUrlCsv implements ShouldQueue
      * Process the csv.
      *
      * @param array $headersMapping
-     * @param string $file
-     *
+     * @param string $filePath
+     * 
      * @return void
      */
-    private function processFile(array $headersMapping, string $file)
+    public function processFile(array $headersMapping, string $filePath)
     {
         $row = [];
+        $file = fopen($filePath, "r");
+        //skipping headers
+        fgetcsv($file);
 
         while (($data = fgetcsv($file)) !== FALSE) {
             echo $data[0] . "\n";
@@ -122,8 +148,6 @@ class ProcessShortUrlCsv implements ShouldQueue
             $row = array_map(function ($mapping) use ($data) {
                 return $data[$mapping];
             }, $headersMapping);
-
-            var_dump(json_encode($row));
 
             $this->processRow($row);
         }
@@ -140,11 +164,19 @@ class ProcessShortUrlCsv implements ShouldQueue
      */
     public function processRow(array $row)
     {
-        $saved = $this->shortUrlService->createShortUrl($row[self::LONG_URL_COLUMN_HEADER]);
+        $domain = in_array($row['domain'] ?? null, self::DOMAINS) ?  $row['domain'] : null;
 
-        if (!$saved) {
-            // TODO do some logging.
-            \Log::info('Failed to create short url for ' . $row[self::LONG_URL_COLUMN_HEADER]);
+        $url = $this->sanitizeUrl($row[self::LONG_URL_COLUMN_HEADER]);
+
+        if (!empty($url)) {
+            $saved = $this->shortUrlService->createShortUrl($url, $domain);
+
+            if (!$saved) {
+                \Log::info('Failed to create short url for ' . $row[self::LONG_URL_COLUMN_HEADER]);
+            } 
+        } else {
+            \Log::info('Failed to sanitize redirect ' . $row[self::LONG_URL_COLUMN_HEADER]); 
         }
+        
     }
 }

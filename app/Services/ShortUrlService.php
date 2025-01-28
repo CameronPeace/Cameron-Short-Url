@@ -50,11 +50,11 @@ class ShortUrlService
         try {
             $tries = 0;
             $code = $this->generateRandomString($length);
-            $found = $this->shortUrlRepository->get($code, $domain);
+            $found = $this->shortUrlRepository->first($code, $domain);
 
             while (!empty($found)) {
                 $code = $this->generateRandomString($length);
-                $found = $this->shortUrlRepository->get($code, $domain);
+                $found = $this->shortUrlRepository->first($code, $domain);
                 $tries++;
 
                 if ($tries >= 50) {
@@ -84,5 +84,23 @@ class ShortUrlService
         } catch (\Exception $e) {
             throw new ShortUrlServiceException($e->getMessage());
         }
+    }
+
+    /**
+     * Retrieve a single short url
+     *
+     * @param string $code
+     * @param string|null $domain
+     *
+     * @return array
+     */
+    public function getShortUrl(string $code, string $domain = null) 
+    {
+
+        if (!is_null($domain) && !in_array($domain, self::DOMAINS)) {
+            $domain = null;
+        }
+
+        return $this->shortUrlRepository->first($code, $domain);
     }
 }

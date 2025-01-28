@@ -22,7 +22,7 @@ class ShortUrlRepository
      *
      * @return array
      */
-    public function get(string $code, string $domain = null)
+    public function first(string $code, string $domain = null)
     {
         return $this->model->where('domain', $domain)->where('code', $code)->first();
     }

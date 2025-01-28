@@ -3,7 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Jobs\SaveShortUrlClick;
-use App\Models\Repositories\ShortUrlRepository;
+use App\Services\ShortUrlService;
 use App\Traits\ShortUrl;
 use Closure;
 use Illuminate\Http\Request;
@@ -20,41 +20,41 @@ class ShortUrlRedirect
      */
     public function handle(Request $request, Closure $next): Response
     {
-        \Log::info('Short Url redirect');
-
         // we are using localhost/s/ to act as our domain.
         if ($request->is('s/*')) {
+
             $host = $request->getHost();
             $code = $request->segment(2);
+
+            $clickData = [
+                'domain' => $host,
+                'code' => $code,
+                'occurred_at' => date('Y-m-d H:i:s'),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent()
+            ];
 
             $cacheKey = $host . '_' . $code;
             $cachedRedirect = \Cache::get($cacheKey);
 
+            // use our cache value if we have it.
             if (!empty($cachedRedirect)) {
+                SaveShortUrlClick::dispatch($clickData);
                 return redirect($cachedRedirect);
             }
 
-            $shortUrlRepository = new ShortUrlRepository();
-            $shortUrl = $shortUrlRepository->get($code);
+            $shortUrlService = new ShortUrlService();
+            $record = $shortUrlService->getShortUrl($code, $host);
 
-            if (!empty($shortUrl) && !empty($shortUrl['redirect'])) {
+            if (!empty($record) && !empty($record['redirect'])) {
 
-                \Cache::put($cacheKey, $shortUrl['redirect'], 600);
+                \Cache::put($cacheKey, $record['redirect'], 600);
 
-                $url = $this->sanitizeUrl($shortUrl['redirect']);
+                $clickData['short_url_id'] = $record['id'];
 
-                if (!empty($url)) {
+                SaveShortUrlClick::dispatch($clickData);
 
-                    $clickData = [
-                        'id' => $shortUrl['id'],
-                        'occurred_at' => date('Y-m-d H:i:s'),
-                        'ip_address' => $request->ip(),
-                        'user_agent' => $request->userAgent()
-                    ];
-
-                    SaveShortUrlClick::dispatch($clickData);
-                    return redirect($this->sanitizeUrl($url));
-                }
+                return redirect($record['redirect']);
             }
         }
 

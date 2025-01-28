@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit;
+namespace Tests\Unit\Services;
 
 use App\Exceptions\ShortUrlServiceException;
 use App\Models\ShortUrl;
@@ -119,12 +119,15 @@ class ShortUrlServiceTest extends TestCase
         $this->assertEquals($record['redirect'], $redirect);
         $this->assertEquals($record['domain'], $domain);
 
-        $shortUrlModel = new ShortUrl();
-        $newRecord = $shortUrlModel->select('code')->where('domain', $domain)->where('code', $record['code'])->first();
-
-        $this->assertEquals($record['code'], $newRecord['code']);
+        $this->assertDatabaseHas('short_url', [
+            'domain' => $domain,
+            'code' => $record['code'],
+        ]);
     }
 
+    /**
+     * Test that the getCodeDetails function returns short_url and click data.
+     */
     public function testGetCodeDetails()
     {
 
@@ -138,11 +141,11 @@ class ShortUrlServiceTest extends TestCase
             'redirect' => $redirect,
             'code' => $this->class->generateRandomString(5)
         ]);
-        
+
         $this->createClicks($record['id'], $totalClicks);
 
         $details = $this->class->getCodeDetails($record['code'], $domain);
-        
+
         $this->assertNotEmpty($details);
         $this->assertArrayHasKey('total_clicks', $details);
         $this->assertEquals($details['total_clicks'], $totalClicks);
@@ -160,11 +163,11 @@ class ShortUrlServiceTest extends TestCase
     {
         $shortUrlClick = new ShortUrlClick();
 
-        for($i = 0; $i < $total; $i++) {
+        for ($i = 0; $i < $total; $i++) {
             $shortUrlClick->create([
                 'short_url_id' => $shortUrlId,
                 'occurred_at' => date('Y-m-d H:i:s'),
-                'ip_address' => '127.0.0.1', 
+                'ip_address' => '127.0.0.1',
                 'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:135.0) Gecko/20100101 Firefox/135.0'
             ]);
         }

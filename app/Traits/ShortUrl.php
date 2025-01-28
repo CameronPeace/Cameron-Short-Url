@@ -4,6 +4,11 @@ namespace App\Traits;
 
 trait ShortUrl
 {
+
+    const DOMAINS = [
+        'mod.io'
+    ];
+    
     /**
      * Generate a random string at a given length.
      *

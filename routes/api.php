@@ -8,3 +8,4 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::get('/short', [App\Http\Controllers\ShortUrlController::class, 'getCodeDetails']);
+Route::get('/redirects', [App\Http\Controllers\ShortUrlController::class, 'getRedirects']);

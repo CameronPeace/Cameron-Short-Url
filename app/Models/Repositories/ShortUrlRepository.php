@@ -53,7 +53,7 @@ class ShortUrlRepository
     {
         return $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
             ->selectRaw('COUNT(short_url_click.id) AS total_clicks')
-            ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
+            ->leftJoin('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
             ->where('code', $code)
             ->where('domain', $domain)
             ->groupBy('short_url.id')
@@ -72,7 +72,7 @@ class ShortUrlRepository
     {
         $query = $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
             ->selectRaw('COUNT(short_url_click.id) AS total_clicks')
-            ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
+            ->leftJoin('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
             ->groupBy('short_url.id')
             ->limit($limit);
 

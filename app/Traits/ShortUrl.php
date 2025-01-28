@@ -4,7 +4,14 @@ namespace App\Traits;
 
 trait ShortUrl
 {
-    public function generateRandomString($length = 10)
+    /**
+     * Generate a random string at a given length.
+     *
+     * @param int $length
+     *
+     * @return string $randomString.
+     */
+    public function generateRandomString(int $length = 10)
     {
 
         $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -18,7 +25,14 @@ trait ShortUrl
         return $randomString;
     }
 
-    public function sanitizeUrl($url = null)
+    /**
+     * Sanitize a url
+     *
+     * @param string $url
+     *
+     * @return string|null
+     */
+    public function sanitizeUrl(string $url = null)
     {
 
         if (is_null($url)) {
@@ -27,15 +41,15 @@ trait ShortUrl
 
         $url = filter_var($url, FILTER_SANITIZE_URL);
 
-        // Check if the URL is valid
-        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
-            return false;
-        }
-
         if (strpos($url, 'http://') === 0) {
             $url = 'https' . substr($url, 4);
         } elseif (strpos($url, 'https://') !== 0) {
             $url = 'https://' . ltrim($url, '/');
+        }
+
+        // Check if the URL is valid
+        if (filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return false;
         }
 
         return $url;

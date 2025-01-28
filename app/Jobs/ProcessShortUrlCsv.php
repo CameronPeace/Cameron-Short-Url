@@ -20,18 +20,12 @@ class ProcessShortUrlCsv implements ShouldQueue
         self::LONG_URL_COLUMN_HEADER
     ];
 
-    /**
-     * Create a new job instance.
-     */
     public function __construct(string $filePath)
     {
         $this->filePath = $filePath;
         $this->shortUrlService = new ShortUrlService();
     }
 
-    /**
-     * Execute the job.
-     */
     public function handle(): void
     {
         if (!file_exists($this->filePath)) {
@@ -44,18 +38,20 @@ class ProcessShortUrlCsv implements ShouldQueue
             return;
         }
 
-        // 500 MB in bytes
-        $maxFileSize = 500 * 1024 * 1024;
+        // 50 MB
+        $maxFileSize = 50 * 1024 * 1024;
 
         if (!file_exists($this->filePath)) {
-            throw new RuntimeException("File does not exist: " . $this->filePath);
+            \Log::error("File does not exist: " . $this->filePath);
+            return;
         }
 
         $fileSize = filesize($this->filePath);
 
         var_dump($fileSize);
         if ($fileSize > $maxFileSize) {
-            throw new RuntimeException("File size exceeds the maximum allowed size of 500MB: " . $this->filePath);
+            \Log::error("File size exceeds the maximum allowed size of 500MB: " . $this->filePath);
+            return;
         }
 
         $file = fopen($this->filePath, "r");
@@ -74,6 +70,13 @@ class ProcessShortUrlCsv implements ShouldQueue
         $this->processFile($headersMapping, $file);
     }
 
+    /**
+     * Standardize headers for matching.
+     *
+     * @param array $headers
+     *
+     * @return array
+     */
     private function prepareHeaders(array $headers)
     {
         return array_map(function ($header) {
@@ -81,12 +84,18 @@ class ProcessShortUrlCsv implements ShouldQueue
         }, $headers);
     }
 
+    /**
+     * Map the file headers to our allowed headers and return the index mapping for those allowed.
+     *
+     * @param array $headers
+     *
+     * @return array
+     */
     private function mapHeaders(array $headers)
     {
         $mapped = [];
 
         for ($i = 0; $i <= COUNT($headers); $i++) {
-
             if (in_array($headers[$i], self::ACCEPTED_HEADERS)) {
                 $mapped[$headers[$i]] = $i;
             }
@@ -95,9 +104,16 @@ class ProcessShortUrlCsv implements ShouldQueue
         return $mapped;
     }
 
-    private function processFile($headersMapping, $file)
+    /**
+     * Process the csv.
+     *
+     * @param array $headersMapping
+     * @param string $file
+     *
+     * @return void
+     */
+    private function processFile(array $headersMapping, string $file)
     {
-
         $row = [];
 
         while (($data = fgetcsv($file)) !== FALSE) {
@@ -115,6 +131,13 @@ class ProcessShortUrlCsv implements ShouldQueue
         fclose($file);
     }
 
+    /**
+     * Process a single csv row.
+     *
+     * @param array $row
+     *
+     * @return void
+     */
     public function processRow(array $row)
     {
         $saved = $this->shortUrlService->createShortUrl($row[self::LONG_URL_COLUMN_HEADER]);

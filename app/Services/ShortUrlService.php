@@ -17,25 +17,50 @@ class ShortUrlService
         $this->shortUrlRepository = new ShortUrlRepository();
     }
 
+    /**
+     * Create a new short_url record with a unique code.
+     *
+     * @param string $redirect The redirect url.
+     * @param string|null $domain The desired short url domain. Do not use if custom domains do not exist.
+     * @param int $length The length of the code.
+     *
+     * @return array
+     */
     public function createShortUrl(string $redirect, string $domain = null, int $length = 6)
     {
         try {
-            $code = $this->createNewCode($length, $domain);
+            $code = $this->createNewCode($domain, $length);
 
-            return $this->shortUrlRepository->create($code, $redirect);
+            return $this->shortUrlRepository->create($code, $redirect, $domain);
         } catch (\Exception $e) {
             throw new ShortUrlServiceException($e->getMessage());
         }
     }
 
-    public function createNewCode(int $length = 6, string $domain = null)
+    /**
+     * Create a new unique short url.
+     *
+     * @param string|null $domain The domain to create the code under.
+     * @param int $length The desired link of the code.
+     *
+     * @return string $code
+     */
+    public function createNewCode(string $domain = null, int $length = 6)
     {
         try {
+            $tries = 0;
             $code = $this->generateRandomString($length);
             $found = $this->shortUrlRepository->get($code, $domain);
 
-            if (!empty($found)) {
-                return $this->createNewCode($length, $domain);
+            while (!empty($found)) {
+                $code = $this->generateRandomString($length);
+                $found = $this->shortUrlRepository->get($code, $domain);
+                $tries++;
+
+                if ($tries >= 50) {
+                    $message = sprintf('Failed to create unique short url for the domain %s', $domain);
+                    throw new \Exception($message);
+                }
             }
 
             return $code;
@@ -44,6 +69,14 @@ class ShortUrlService
         }
     }
 
+    /**
+     * Retrieve the details of a short url.
+     *
+     * @param string $code
+     * @param string|null $domain
+     *
+     * @return array
+     */
     public function getCodeDetails(string $code, string $domain = null)
     {
         try {

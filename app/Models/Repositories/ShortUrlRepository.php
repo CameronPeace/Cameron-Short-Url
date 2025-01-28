@@ -41,6 +41,14 @@ class ShortUrlRepository
         return $this->model->create(['code' => $code, 'redirect' => $redirect, 'domain' => $domain]);
     }
 
+    /**
+     * Get the details on a specific url.
+     *
+     * @param string $code
+     * @param string|null $domain
+     *
+     * @return array
+     */
     public function getDetailsByCode(string $code, string $domain = null)
     {
         return $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
@@ -49,9 +57,16 @@ class ShortUrlRepository
             ->where('code', $code)
             ->where('domain', $domain)
             ->groupBy('short_url.id')
-            ->get();
+            ->first();
     }
 
+    /**
+     * Return a list of short_urls and their click totals.
+     *
+     * @param int $limit
+     *
+     * @return array
+     */
     public function getDetails(int $limit = 100)
     {
         return $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')

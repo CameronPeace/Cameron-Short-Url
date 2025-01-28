@@ -8,7 +8,7 @@ trait ShortUrl
     const DOMAINS = [
         'mod.io'
     ];
-    
+
     /**
      * Generate a random string at a given length.
      *
@@ -18,7 +18,6 @@ trait ShortUrl
      */
     public function generateRandomString(int $length = 10)
     {
-
         $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
         $charactersLength = strlen($characters);
         $randomString = '';
@@ -39,7 +38,6 @@ trait ShortUrl
      */
     public function sanitizeUrl(string $url = null)
     {
-
         if (is_null($url)) {
             return null;
         }

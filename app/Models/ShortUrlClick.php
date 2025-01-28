@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class ShortUrlClick extends Model
 {
     use HasFactory;
-    
+
     protected $table = 'short_url_click';
 
     /**
@@ -29,8 +29,8 @@ class ShortUrlClick extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'created_at' => 'datetime',
-        'occurred_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'created_at' => 'datetime:Y-m-d H:i:s',
+        'occurred_at' => 'datetime:Y-m-d H:i:s',
+        'updated_at' => 'datetime:Y-m-d H:i:s'
     ];
 }

@@ -10,6 +10,9 @@ class ShortUrlService
 {
     use ShortUrl;
 
+    /**
+     * @var ShortUrlRepository
+     */
     private $shortUrlRepository;
 
     public function __construct()
@@ -25,6 +28,7 @@ class ShortUrlService
      * @param int $length The length of the code.
      *
      * @return array
+     * @throws ShortUrlServiceException
      */
     public function createShortUrl(string $redirect, string $domain = null, int $length = 6)
     {
@@ -44,6 +48,7 @@ class ShortUrlService
      * @param int $length The desired link of the code.
      *
      * @return string $code
+     * @throws ShortUrlServiceException
      */
     public function createNewCode(string $domain = null, int $length = 6)
     {
@@ -76,6 +81,7 @@ class ShortUrlService
      * @param string|null $domain
      *
      * @return array
+     * @throws ShortUrlServiceException
      */
     public function getCodeDetails(string $code, string $domain = null)
     {
@@ -93,14 +99,37 @@ class ShortUrlService
      * @param string|null $domain
      *
      * @return array
+     * @throws ShortUrlServiceException
      */
-    public function getShortUrl(string $code, string $domain = null) 
+    public function getShortUrl(string $code, string $domain = null)
     {
 
         if (!is_null($domain) && !in_array($domain, self::DOMAINS)) {
             $domain = null;
         }
 
-        return $this->shortUrlRepository->first($code, $domain);
+        try {
+            return $this->shortUrlRepository->first($code, $domain);
+        } catch (\Exception $e) {
+            throw new ShortUrlServiceException($e->getMessage());
+        }
+    }
+
+    /**
+     * Get a list of redirects ordered by their clicks.
+     *
+     * @param int $limit Max records to return
+     * @param bool $orderByClicks Order results by the highest click counts.
+     *
+     * @return array
+     * @throws ShortUrlServiceException
+     */
+    public function getRedirects(int $limit = 100, bool $orderByClicks = true)
+    {
+        try {
+            return $this->shortUrlRepository->getRedirects($limit, $orderByClicks);
+        } catch (\Exception $e) {
+            throw new ShortUrlServiceException($e->getMessage());
+        }
     }
 }

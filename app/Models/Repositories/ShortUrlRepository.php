@@ -64,17 +64,24 @@ class ShortUrlRepository
      * Return a list of short_urls and their click totals.
      *
      * @param int $limit
+     * @param bool $orderByClicks
      *
      * @return array
      */
-    public function getDetails(int $limit = 100)
+    public function getRedirects(int $limit = 100, bool $orderByClicks = true)
     {
-        return $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
+        $query = $this->model->select('short_url.code', 'short_url.redirect', 'short_url.created_at')
             ->selectRaw('COUNT(short_url_click.id) AS total_clicks')
             ->join('short_url_click', 'short_url.id', 'short_url_click.short_url_id')
             ->groupBy('short_url.id')
-            ->orderBy('total_clicks', 'desc')
-            ->limit($limit)
-            ->get();
+            ->limit($limit);
+
+        if ($orderByClicks) {
+            $query->orderBy('total_clicks', 'desc');
+        } else {
+            $query->orderBy('short_url.id');
+        }
+
+        return $query->get();
     }
 }

@@ -43,7 +43,6 @@ class ProcessShortUrlCsv implements ShouldQueue
 
     public function handle(): void
     {
-
         if (!$this->fileExists($this->filePath)) {
             \Log::error('File ' . $this->filePath . ' does not exist');
             $this->log(get_class($this), 'FILE_REJECTED_404', ['file' => $this->filePath, 'message' => 'File does not exist.']);
@@ -51,7 +50,7 @@ class ProcessShortUrlCsv implements ShouldQueue
         }
 
         if (!$this->isCsv($this->filePath)) {
-            \Log::error('File is not a csv.');
+            \Log::error('File is not a csv: ' . $this->filePath);
             $this->log(get_class($this), 'FILE_REJECTED_TYPE', ['file' => $this->filePath, 'message' => 'File is not a csv.']);
             return;
         }
@@ -97,7 +96,7 @@ class ProcessShortUrlCsv implements ShouldQueue
      *
      * @return array
      */
-    public function prepareHeaderMappings($filePath) 
+    public function prepareHeaderMappings($filePath)
     {
         $file = fopen($filePath, "r");
         $headers = fgetcsv($file);
@@ -143,8 +142,6 @@ class ProcessShortUrlCsv implements ShouldQueue
         fgetcsv($file);
 
         while (($data = fgetcsv($file)) !== FALSE) {
-            echo $data[0] . "\n";
-
             $row = array_map(function ($mapping) use ($data) {
                 return $data[$mapping];
             }, $headersMapping);
@@ -173,10 +170,9 @@ class ProcessShortUrlCsv implements ShouldQueue
 
             if (!$saved) {
                 \Log::info('Failed to create short url for ' . $row[self::LONG_URL_COLUMN_HEADER]);
-            } 
+            }
         } else {
-            \Log::info('Failed to sanitize redirect ' . $row[self::LONG_URL_COLUMN_HEADER]); 
+            \Log::info('Failed to sanitize redirect ' . $row[self::LONG_URL_COLUMN_HEADER]);
         }
-        
     }
 }
